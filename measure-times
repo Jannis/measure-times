@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+
+
+import cliapp
+import datetime
+import re
+import subprocess
+
+
+class MeasureTimes(cliapp.Application):
+
+    def add_settings(self):
+        self.settings.string_list(['benchmark-samples', 's'],
+                                  'Benchmark sample to obtain a timestamp for',
+                                  metavar='PATTERN')
+
+    def process_args(self, args):
+        process = subprocess.Popen(args,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout = process.stdout
+
+        times = {}
+
+        while True:
+            line = stdout.readline().strip()
+            if not line:
+                break
+            matches = self._sample_matches(line)
+            if matches:
+                times[(line, tuple(matches))] = datetime.datetime.now()
+            print '[stdout] %s' % line.strip()
+
+        print
+
+        for line, matches in times.iterkeys():
+            print '%s: %s: %s' % (times[(line, matches)], matches, line)
+
+    def _sample_matches(self, line):
+        samples = self.settings['benchmark-samples']
+        return [x for x in samples if re.match('^.*%s.*$' % x, line)]
+
+
+if __name__ == '__main__':
+    MeasureTimes().run()
